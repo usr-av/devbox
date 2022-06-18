@@ -3,19 +3,14 @@ volumes:
   elastic-data:
   prometheus-data:
   grafana-data:
-  prometheus-config:
-    external: true
-  graphana-config:
-    external: true
-  pg-data:
 
 services:
   devbox-db:
     image: "${PGIMAGE}"
     ports:
-      - ${PGHOSTPORT}:${PGPORT}
+      - "${PGHOSTPORT}:${PGPORT}"
     volumes:
-      - pg-data:/data
+      - "./pgdata:/data"
     environment:
       POSTGRES_USER:     "${PGUSER}"
       POSTGRES_PASSWORD: "${PGPASSWORD}"
@@ -28,7 +23,7 @@ services:
       - "devbox-db:database"
       - es:es
     ports:
-      - ${AIDBOX_PORT}:${AIDBOX_PORT}
+      - "${AIDBOX_PORT}:${AIDBOX_PORT}"
     env_file:
       - .env
     environment:
@@ -55,7 +50,7 @@ services:
     ports:
       - 9090:9090
     volumes:
-      - prometheus-config:/etc/prometheus/:cached
+      - ./audit/prometheus/:/etc/prometheus/:cached
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -80,7 +75,7 @@ services:
         soft: -1
         hard: -1
     ports:
-      - 9200:9200
+      - "9200:9200"
 
   kibana:
     depends_on:
@@ -89,7 +84,7 @@ services:
       - "es:es"
     image: "docker.elastic.co/kibana/kibana:7.13.2"
     ports:
-      - 5601:5601
+      - "5601:5601"
     environment:
       ELASTICSEARCH_HOSTS: "http://es:9200"
 
@@ -102,7 +97,7 @@ services:
       V: "v5"
     volumes:
       - "grafana-data:/var/lib/grafana"
-      - graphana-config:/etc/grafana/provisioning
+      - "./audit/grafana/provisioning:/etc/grafana/provisioning"
     image: grafana/grafana:8.3.0
     ports:
       - 3000:3000
@@ -114,13 +109,13 @@ services:
     cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
     cap_drop: ["ALL"]
     ports:
-    - 8200:8200
+      - 8200:8200
     links:
       - "es:es"
     command: >
-       apm-server -e
-         -E setup.kibana.host=kibana:5601
-         -E setup.template.settings.index.number_of_replicas=0
-         -E apm-server.kibana.enabled=true
-         -E apm-server.kibana.host=kibana:5601
-         -E output.elasticsearch.hosts=["es:9200"]
+      apm-server -e
+        -E setup.kibana.host=kibana:5601
+        -E setup.template.settings.index.number_of_replicas=0
+        -E apm-server.kibana.enabled=true
+        -E apm-server.kibana.host=kibana:5601
+        -E output.elasticsearch.hosts=["es:9200"]
